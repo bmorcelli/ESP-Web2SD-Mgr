@@ -1,3 +1,4 @@
+// linha17: <button onclick="showUploadButtonFancy('/')">Upload File</button>
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML>
 <html lang="en">
@@ -13,11 +14,13 @@ const char index_html[] PROGMEM = R"rawliteral(
   <button onclick="logoutButton()">Logout</button>
   <button onclick="rebootButton()">Reboot</button>
   <button onclick="listFilesButton('/')">List Files</button>
-  <button onclick="showUploadButtonFancy('/')">Upload File</button>
+
   </p>
-  <p id="status"></p>
   <p id="detailsheader"></p>
   <p id="details"></p>
+  <p id="updetailsheader"></p>
+  <p id="status"></p>
+  <p id="updetails"></p>
 <script>
 function logoutButton() {
   var xhr = new XMLHttpRequest();
@@ -32,13 +35,16 @@ function rebootButton() {
   xhr.send();
   window.open("/reboot","_self");
 }
-function listFilesButton(folder) {
+function listFilesButton(folders) {
   xmlhttp=new XMLHttpRequest();
-  xmlhttp.open("GET", "/listfiles?folder=/" + folder, false);
+  xmlhttp.open("GET", "/listfiles?folder=/" + folders, false);
   xmlhttp.send();
   document.getElementById("detailsheader").innerHTML = "<h3>Files<h3>";
   document.getElementById("details").innerHTML = xmlhttp.responseText;
-  document.getElementById("folder").value = folder;
+  document.getElementById("updetails").innerHTML = "";
+  showUploadButtonFancy(folders);
+  document.getElementById("folder").value = '';
+  document.getElementById("folder").value = folders;
 }
 function downloadDeleteButton(filename, action) {
   var urltocall = "/file?name=" + filename + "&action=" + action;
@@ -56,20 +62,21 @@ function downloadDeleteButton(filename, action) {
     window.open(urltocall,"_blank");
   }
 }
-function showUploadButtonFancy(folder) {
-  document.getElementById("detailsheader").innerHTML = "<h3>Upload File<h3>"
+function showUploadButtonFancy(folders) {
+  document.getElementById("updetailsheader").innerHTML = "<h3>Upload File<h3>"
   document.getElementById("status").innerHTML = "";
   var uploadform = "<form method = \"POST\" action = \"/\" enctype=\"multipart/form-data\"><input type=\"file\" name=\"data\"/><input type=\"submit\" name=\"upload\" value=\"Upload\" title = \"Upload File\"></form>"
-  document.getElementById("details").innerHTML = uploadform;
+  document.getElementById("updetails").innerHTML = uploadform;
   var uploadform =
+  "<p>Send file to " + folders + "</p>"+
   "<form id=\"upload_form\" enctype=\"multipart/form-data\" method=\"post\">" +
-  "<input type=\"hidden\" id=\"folder\" name=\"folder\" value=\"/\">" + 
-  "<input type=\"file\" name=\"file1\" id=\"file1\" onchange=\"uploadFile()\"><br>" +
+  "<input type=\"hidden\" id=\"folder\" name=\"folder\" value=\"" + folders + "\">" + 
+  "<input type=\"file\" name=\"file1\" id=\"file1\" onchange=\"uploadFile('" + folders + "')\"><br>" +
   "<progress id=\"progressBar\" value=\"0\" max=\"100\" style=\"width:300px;\"></progress>" +
   "<h3 id=\"status\"></h3>" +
   "<p id=\"loaded_n_total\"></p>" +
   "</form>";
-  document.getElementById("details").innerHTML = uploadform;
+  document.getElementById("updetails").innerHTML = uploadform;
 }
 function _(el) {
   return document.getElementById(el);

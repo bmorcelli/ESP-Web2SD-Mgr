@@ -36,6 +36,7 @@ AsyncWebServer *server;               // initialise webserver
 const char* host = "esp";
 const String fileconf = "/ESPWeb2SD.txt";
 bool shouldReboot = false;            // schedule a reboot
+String uploadFolder="";
 
 
 // function defaults
@@ -74,6 +75,8 @@ String listFiles(bool ishtml, String folder) {
   }
   File root = SD.open(folder);
   File foundfile = root.openNextFile();
+  if (folder=="//") folder = "/";
+  uploadFolder = folder;
   String PreFolder = folder;
   PreFolder = PreFolder.substring(0, PreFolder.lastIndexOf("/"));
   if(PreFolder != ""){ returnText += "<tr><th align='left'><a onclick=\"listFilesButton('"+ PreFolder + "')\" href='javascript:void(0);'>... </a></th><th align='left'></th><th></th><th></th></tr>"; }
@@ -94,6 +97,7 @@ String listFiles(bool ishtml, String folder) {
   root.close();
   foundfile.close();
 
+  if (folder=="") folder = "/";
   root = SD.open(folder);
   foundfile = root.openNextFile();
   while (foundfile) {
@@ -142,6 +146,17 @@ bool checkUserWebAuth(AsyncWebServerRequest * request) {
 // handles uploads to the filserver
 void handleUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
   // make sure authenticated before allowing upload
+
+  Serial.println("Folder: " + uploadFolder);  
+  if (uploadFolder=="/") uploadFolder = "";
+
+  if (request->hasParam("folder", true)) {
+    uploadFolder = request->getParam("folder", true)->value();
+    Serial.printf("FOLDER: %s\n", uploadFolder.c_str());
+    // Aqui você pode usar a variável folder para determinar a pasta onde o arquivo será salvo
+  }
+
+
   if (checkUserWebAuth(request)) {
     String logmessage = "Client:" + request->client()->remoteIP().toString() + " " + request->url();
     Serial.println(logmessage);
@@ -149,7 +164,7 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
     if (!index) {
       logmessage = "Upload Start: " + String(filename);
       // open the file on first call and store the file handle in the request object
-      request->_tempFile = SD.open("/" + filename, "w");
+      request->_tempFile = SD.open(uploadFolder + "/" + filename, "w");
       Serial.println(logmessage);
     }
 
@@ -165,6 +180,7 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
       // close the file handle as the upload is now done
       request->_tempFile.close();
       Serial.println(logmessage);
+      //request->redirect("/listfiles&folder=" + uploadFolder);
       request->redirect("/");
     }
   } else {
@@ -214,6 +230,7 @@ void configureWebServer() {
       logmessage += " Auth: Success";
       Serial.println(logmessage);
       request->send_P(200, "text/html", index_html, processor);
+      //request->redirect("/listfiles");
     } else {
       logmessage += " Auth: Failed";
       Serial.println(logmessage);
@@ -243,13 +260,14 @@ void configureWebServer() {
     if (checkUserWebAuth(request)) {
       logmessage += " Auth: Success";
       Serial.println(logmessage);
+      String folder = "";
       if (request->hasParam("folder")) {
-        String folder = request->getParam("folder")->value().c_str();
-        request->send(200, "text/plain", listFiles(true, folder));
+        folder = request->getParam("folder")->value().c_str();
       } else {
-        request->send(400, "text/plain", "Folder not specified");
+        String folder = "/";
       }
-      //request->send(200, "text/plain", listFiles(true));
+      request->send(200, "text/plain", listFiles(true, folder));
+
     } else {
       logmessage += " Auth: Failed";
       Serial.println(logmessage);
