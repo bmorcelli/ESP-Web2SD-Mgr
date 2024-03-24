@@ -1,4 +1,4 @@
-name: CI/CD
+name: Test-build
 
 on:
   workflow_dispatch:
@@ -36,7 +36,6 @@ jobs:
       - name: Build Project
         run: |
           platformio run
-          platformio run --target buildfs
 
       - name: Merge output binaries files
         run: |
