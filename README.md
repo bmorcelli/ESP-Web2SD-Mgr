@@ -16,6 +16,5 @@ Change the first line string "SSID_of_my_network" with your SSID Network and "Pa
 This project derivates from [Example 2 of esp32-asyncwebserver-fileupload-example](https://github.com/smford/esp32-asyncwebserver-fileupload-example), but adjusted to read filles from SD Card instead of SPIFFS and added support to navigate through folders.
 
 # Limitations
-* It uploads files only into root folder
 * Restart ESP option doesn't work yet
   
