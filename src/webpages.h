@@ -16,20 +16,21 @@ const char index_html[] PROGMEM = R"rawliteral(
   <button onclick="listFilesButton('/')">List Files</button>
 
   </p>
+  <p id="status"></p>
   <p id="detailsheader"></p>
   <p id="details"></p>
   <p id="updetailsheader"></p>
-  <p id="status"></p>
   <p id="updetails"></p>
 <script>
 function logoutButton() {
+  document.getElementById("status").innerHTML = "Invoking Logoff ...";
   var xhr = new XMLHttpRequest();
   xhr.open("GET", "/logout", true);
   xhr.send();
   setTimeout(function(){ window.open("/logged-out","_self"); }, 1000);
 }
 function rebootButton() {
-  document.getElementById("statuSDetails").innerHTML = "Invoking Reboot ...";
+  document.getElementById("status").innerHTML = "Invoking Reboot ...";
   var xhr = new XMLHttpRequest();
   xhr.open("GET", "/reboot", true);
   xhr.send();
