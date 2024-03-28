@@ -41,7 +41,7 @@ String uploadFolder="";
 
 // function defaults
 void rebootESP(String message);
-String humanReadableSize(const size_t bytes);
+String humanReadableSize(uint64_t bytes);
 String listFiles(bool ishtml, String folder);
 
 
@@ -58,9 +58,9 @@ void rebootESP(String message) {
 // Make size of files human readable
 // source: https://github.com/CelliesProjects/minimalUploadAuthESP32
 
-String humanReadableSize(const size_t bytes) {
+String humanReadableSize(uint64_t bytes) {
   if (bytes < 1024) return String(bytes) + " B";
-  else if (bytes < (1024 * 1024)) return String(bytes / 1024.0) + " KB";
+  else if (bytes < (1024 * 1024)) return String(bytes / 1024.0) + " kB";
   else if (bytes < (1024 * 1024 * 1024)) return String(bytes / 1024.0 / 1024.0) + " MB";
   else return String(bytes / 1024.0 / 1024.0 / 1024.0) + " GB";
 }
@@ -79,7 +79,8 @@ String listFiles(bool ishtml, String folder) {
   uploadFolder = folder;
   String PreFolder = folder;
   PreFolder = PreFolder.substring(0, PreFolder.lastIndexOf("/"));
-  if(PreFolder != ""){ returnText += "<tr><th align='left'><a onclick=\"listFilesButton('"+ PreFolder + "')\" href='javascript:void(0);'>... </a></th><th align='left'></th><th></th><th></th></tr>"; }
+  if(PreFolder=="") PreFolder= "/";
+  returnText += "<tr><th align='left'><a onclick=\"listFilesButton('"+ PreFolder + "')\" href='javascript:void(0);'>... </a></th><th align='left'></th><th></th><th></th></tr>";
 
   if (folder=="/") folder = "";
   while (foundfile) {
@@ -87,7 +88,7 @@ String listFiles(bool ishtml, String folder) {
       if (ishtml) {
         returnText += "<tr align='left'><td><a onclick=\"listFilesButton('"+ folder +"/" + String(foundfile.name()) + "')\" href='javascript:void(0);'>" + String(foundfile.name()) + "</a></td><td>" + humanReadableSize(foundfile.size()) + "</td>";
         returnText += "<td><button onclick=\"listFilesButton('" + folder + "/" + String(foundfile.name()) + "')\">Open Folder</button>";
-        returnText += "<td><button onclick=\"downloadDeleteButton(\'" + String(foundfile.name()) + "\', \'delete\')\">Delete</button></tr>";
+        returnText += "<td><button onclick=\"downloadDeleteButton(\'" + folder + "/" + String(foundfile.name()) + "\', \'delete\')\">Delete</button></tr>";
       } else {
         returnText += "Folder: " + String(foundfile.name()) + " Size: " + humanReadableSize(foundfile.size()) + "\n";
       }
@@ -126,9 +127,9 @@ String listFiles(bool ishtml, String folder) {
 // if the webpage has %SOMETHING% or %SOMETHINGELSE% it will replace those strings with the ones defined
 String processor(const String& var) {
   if (var == "FIRMWARE") return FIRMWARE_VERSION;
-  else if (var == "FREESD") return humanReadableSize(SD.usedBytes());
-  else if (var == "USEDSD") return humanReadableSize((SD.cardSize() - SD.usedBytes())*2);
-  else if (var == "TOTALSD") return humanReadableSize((SD.cardSize()));
+  else if (var == "FREESD") return humanReadableSize(SD.totalBytes() - SD.usedBytes());
+  else if (var == "USEDSD") return humanReadableSize(SD.usedBytes());
+  else if (var == "TOTALSD") return humanReadableSize(SD.totalBytes());
   else return "Attribute not configured"; 
 }
 
@@ -215,6 +216,35 @@ void configureWebServer() {
     request->send(401);
   });
 
+  // Setup SSID and Password of network
+  server->on("/wifi", HTTP_GET, [](AsyncWebServerRequest * request) {
+    String logmessage = "Client:" + request->client()->remoteIP().toString() + " " + request->url();
+    if (checkUserWebAuth(request)) {
+      logmessage += " Auth: Success";
+      Serial.println(logmessage);
+
+      if (request->hasParam("ssid") && request->hasParam("pwd")) {
+        const char *ssid = request->getParam("ssid")->value().c_str();
+        const char *pwd = request->getParam("pwd")->value().c_str();
+
+        SD.remove(fileconf);
+        File file = SD.open(fileconf, FILE_WRITE);        
+        file.print(String(ssid) + ";" + String(pwd) + ";" + default_httpuser + ";" + default_httppassword + ";\n");
+        file.print("#SSID_of_my_network;Passwor_of_my_network;ManagerUser;ManagerPassword;");
+        file.close();
+
+        request->send(200, "text/plain", "SSID: " + String(ssid) + " configured with password: " + String(pwd));
+      }
+
+      } else {
+        logmessage += " Auth: Failed";
+        Serial.println(logmessage);
+        return request->requestAuthentication();
+    }
+    Serial.println(logmessage);
+  });
+  
+
   // presents a "you are now logged out webpage
   server->on("/logged-out", HTTP_GET, [](AsyncWebServerRequest * request) {
     String logmessage = "Client:" + request->client()->remoteIP().toString() + " " + request->url();
@@ -287,6 +317,13 @@ void configureWebServer() {
 
         logmessage = "Client:" + request->client()->remoteIP().toString() + " " + request->url() + "?name=" + String(fileName) + "&action=" + String(fileAction);
 
+        if(strcmp(fileAction, "create") == 0) {
+          if(SD.mkdir(fileName)) {
+            logmessage += " created";
+          } else { logmessage += " Fail on create folder."; }
+          Serial.println(logmessage);
+        }
+
         if (!SD.exists(fileName)) {
           Serial.println(logmessage + " ERROR: file does not exist");
           request->send(400, "text/plain", "ERROR: file does not exist");
@@ -297,8 +334,17 @@ void configureWebServer() {
             request->send(SD, fileName, "application/octet-stream");
           } else if (strcmp(fileAction, "delete") == 0) {
             logmessage += " deleted";
-            SD.remove(fileName);
-            request->send(200, "text/plain", "Deleted File: " + String(fileName));
+            File file = SD.open(fileName);
+            if(file.isDirectory()) {
+              file.close();
+              SD.rmdir(fileName);
+              request->send(200, "text/plain", "Deleted Folder: " + String(fileName));
+            } else {
+              file.close();
+              SD.remove(fileName);
+              request->send(200, "text/plain", "Deleted File: " + String(fileName));
+            }
+            
           } else {
             logmessage += " ERROR: invalid action param supplied";
             request->send(400, "text/plain", "ERROR: invalid action param supplied");
@@ -313,6 +359,7 @@ void configureWebServer() {
       Serial.println(logmessage);
       return request->requestAuthentication();
     }
+    Serial.println(logmessage);
   });
 }
 

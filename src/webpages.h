@@ -11,26 +11,43 @@ const char index_html[] PROGMEM = R"rawliteral(
   <p>Firmware: %FIRMWARE%</p>
   <p>Free Storage: <span id="freeSD">%FREESD%</span> | Used Storage: <span id="usedSD">%USEDSD%</span> | Total Storage: <span id="totalSD">%TOTALSD%</span></p>
   <p>
+  <form id="save" enctype="multipart/form-data" method="post"><input type="hidden" id="actualFolder" name="actualFolder" value="/"></form>
   <button onclick="logoutButton()">Logout</button>
   <button onclick="rebootButton()">Reboot</button>
+  <button onclick="WifiConfig()">Configure my WiFi</button>
   <button onclick="listFilesButton('/')">List Files</button>
 
   </p>
-  <p id="status"></p>
   <p id="detailsheader"></p>
+  <p id="status"></p>
   <p id="details"></p>
   <p id="updetailsheader"></p>
   <p id="updetails"></p>
 <script>
+
+function WifiConfig() {
+  let wifiSsid = prompt("Please enter the SSID of your network", "SSID");
+  let wifiPwd = prompt("Please enter the Password of your network", "Password");
+  if (wifiSsid == null || wifiSsid == "" || wifiPwd == null) {
+    window.alert("Invalid SSID of Password");
+  } else {
+    xmlhttp=new XMLHttpRequest();
+    xmlhttp.open("GET", "/wifi?ssid=" + wifiSsid + "&pwd=" + wifiPwd, false);
+    xmlhttp.send();    
+    document.getElementById("status").innerHTML = xmlhttp.responseText;
+  }
+}
+
+
 function logoutButton() {
-  document.getElementById("status").innerHTML = "Invoking Logoff ...";
   var xhr = new XMLHttpRequest();
   xhr.open("GET", "/logout", true);
   xhr.send();
   setTimeout(function(){ window.open("/logged-out","_self"); }, 1000);
 }
+
 function rebootButton() {
-  document.getElementById("status").innerHTML = "Invoking Reboot ...";
+  document.getElementById("statuSDetails").innerHTML = "Invoking Reboot ...";
   var xhr = new XMLHttpRequest();
   xhr.open("GET", "/reboot", true);
   xhr.send();
@@ -38,36 +55,52 @@ function rebootButton() {
 }
 function listFilesButton(folders) {
   xmlhttp=new XMLHttpRequest();
-  xmlhttp.open("GET", "/listfiles?folder=/" + folders, false);
+  document.getElementById("actualFolder").value = "";
+  document.getElementById("actualFolder").value = folders;
+  xmlhttp.open("GET", "/listfiles?folder=" + folders, false);
   xmlhttp.send();
   document.getElementById("detailsheader").innerHTML = "<h3>Files<h3>";
   document.getElementById("details").innerHTML = xmlhttp.responseText;
-  document.getElementById("updetails").innerHTML = "";
-  showUploadButtonFancy(folders);
-  document.getElementById("folder").value = '';
-  document.getElementById("folder").value = folders;
+  document.getElementById("updetailsheader").innerHTML = "<h3>Folder Actions<h3>"
+  document.getElementById("updetails").innerHTML = "<button onclick=\"showUploadButtonFancy('" + folders + "')\">Upload File</button><button onclick=\"showCreateFolder('" + folders + "')\">Create Folder</button>";
 }
 function downloadDeleteButton(filename, action) {
   var urltocall = "/file?name=" + filename + "&action=" + action;
+  var actualFolder = document.getElementById("actualFolder").value
   xmlhttp=new XMLHttpRequest();
-  if (action == "delete") {
+  if (action == "delete" || action=="create") {
     xmlhttp.open("GET", urltocall, false);
     xmlhttp.send();
     document.getElementById("status").innerHTML = xmlhttp.responseText;
-    xmlhttp.open("GET", "/listfiles", false);
-    xmlhttp.send();
-    document.getElementById("details").innerHTML = xmlhttp.responseText;
+    listFilesButton(actualFolder);
   }
   if (action == "download") {
     document.getElementById("status").innerHTML = "";
     window.open(urltocall,"_blank");
   }
 }
+function showCreateFolder(folders) {
+  document.getElementById("updetailsheader").innerHTML = "<h3>Create new Folder<h3>"
+  document.getElementById("status").innerHTML = "";
+  var uploadform =
+  "<p>Creating folder at: <b>" + folders + "</b>"+
+  "<form id=\"create_form\" enctype=\"multipart/form-data\" method=\"post\">" +
+  "<input type=\"hidden\" id=\"folder\" name=\"folder\" value=\"" + folders + "\">" + 
+  "<input type=\"text\" name=\"foldername\" id=\"foldername\">" +
+  "<button onclick=\"CreateFolder()\">Create Folder</button>" +
+  "</form></p>";
+  document.getElementById("updetails").innerHTML = uploadform;
+}
+
+function CreateFolder() {
+  var folderName = ""; 
+  folderName = document.getElementById("folder").value + "/" + document.getElementById("foldername").value;
+  downloadDeleteButton(folderName, 'create');
+}
+
 function showUploadButtonFancy(folders) {
   document.getElementById("updetailsheader").innerHTML = "<h3>Upload File<h3>"
   document.getElementById("status").innerHTML = "";
-  var uploadform = "<form method = \"POST\" action = \"/\" enctype=\"multipart/form-data\"><input type=\"file\" name=\"data\"/><input type=\"submit\" name=\"upload\" value=\"Upload\" title = \"Upload File\"></form>"
-  document.getElementById("updetails").innerHTML = uploadform;
   var uploadform =
   "<p>Send file to " + folders + "</p>"+
   "<form id=\"upload_form\" enctype=\"multipart/form-data\" method=\"post\">" +
@@ -110,12 +143,9 @@ function progressHandler(event) {
 function completeHandler(event) {
   _("status").innerHTML = "Upload Complete";
   _("progressBar").value = 0;
-  xmlhttp=new XMLHttpRequest();
-  xmlhttp.open("GET", "/listfiles?folder=/", false);
-  xmlhttp.send();
+  var actualFolder = document.getElementById("actualFolder").value
   document.getElementById("status").innerHTML = "File Uploaded";
-  document.getElementById("detailsheader").innerHTML = "<h3>Files<h3>";
-  document.getElementById("details").innerHTML = xmlhttp.responseText;
+  listFilesButton(actualFolder);
 }
 function errorHandler(event) {
   _("status").innerHTML = "Upload Failed";
