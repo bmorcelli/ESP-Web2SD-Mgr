@@ -25,7 +25,7 @@ struct Config {
   const int default_webserverporthttp = 80;
 
   //WiFi as an Access Point
-  const char* apSsidName = "WiFi2Sd_Mgr";
+  const char* apSsidName = "Web2Sd_Mgr";
   IPAddress AP_GATEWAY(172, 0, 0, 1);  // Gateway
 
 Config config;                        // configuration
