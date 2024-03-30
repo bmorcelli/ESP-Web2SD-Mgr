@@ -65,8 +65,8 @@ jobs:
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}        
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}        
         with:
           tag_name: v0.0.${{ github.run_number }}
           release_name: v0.0.${{ github.run_number }}
@@ -83,7 +83,7 @@ jobs:
             curl \
               -X POST \
               --data-binary @"$file" \
-              -H "Authorization: Bearer ${{ secrets.RELEASES_TOKEN }}" \
+             # -H "Authorization: Bearer ${{ secrets.RELEASES_TOKEN }}" \
               -H "Content-Type: application/octet-stream" \
               "${{ steps.create_release.outputs.upload_url }}=$(basename $file)"
           done
