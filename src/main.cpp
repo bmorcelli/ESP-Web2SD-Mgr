@@ -1,5 +1,3 @@
-#define FIRMWARE_VERSION "v0.0.1"
-
 #include <WiFi.h>
 #include "AsyncTCP.h"
 #include "ESPAsyncWebServer.h"
@@ -52,6 +50,7 @@ TFT_eSPI tft = TFT_eSPI();         // Invoke custom library
 
 void rebootESP(String message) {
   Serial.print("Rebooting ESP32: "); Serial.println(message);
+  delay(5000);
   ESP.restart();
 }
 
@@ -71,7 +70,7 @@ String listFiles(bool ishtml, String folder) {
   Serial.println("Listing files stored on SD");
 
   if (ishtml) {
-    returnText += "<table><tr><th align='left'>Name</th><th align='left'>Size</th><th></th><th></th></tr>";
+    returnText += "<table><tr><th align='left'>Name</th><th style=\"text-align=center;\">Size</th><th></th></tr>\n";
   }
   File root = SD.open(folder);
   File foundfile = root.openNextFile();
@@ -80,15 +79,16 @@ String listFiles(bool ishtml, String folder) {
   String PreFolder = folder;
   PreFolder = PreFolder.substring(0, PreFolder.lastIndexOf("/"));
   if(PreFolder=="") PreFolder= "/";
-  returnText += "<tr><th align='left'><a onclick=\"listFilesButton('"+ PreFolder + "')\" href='javascript:void(0);'>... </a></th><th align='left'></th><th></th><th></th></tr>";
+  returnText += "<tr><th align='left'><a onclick=\"listFilesButton('"+ PreFolder + "')\" href='javascript:void(0);'>... </a></th><th align='left'></th><th></th></tr>\n";
 
   if (folder=="/") folder = "";
   while (foundfile) {
     if(foundfile.isDirectory()) {
       if (ishtml) {
-        returnText += "<tr align='left'><td><a onclick=\"listFilesButton('"+ folder +"/" + String(foundfile.name()) + "')\" href='javascript:void(0);'>" + String(foundfile.name()) + "</a></td><td>" + humanReadableSize(foundfile.size()) + "</td>";
-        returnText += "<td><button onclick=\"listFilesButton('" + folder + "/" + String(foundfile.name()) + "')\">Open Folder</button>";
-        returnText += "<td><button onclick=\"downloadDeleteButton(\'" + folder + "/" + String(foundfile.name()) + "\', \'delete\')\">Delete</button></tr>";
+        returnText += "<tr align='left'><td><a onclick=\"listFilesButton('"+ folder +"/" + String(foundfile.name()) + "')\" href='javascript:void(0);'>\n" + String(foundfile.name()) + "</a></td>";
+        returnText += "<td></td>\n";
+        returnText += "<td><i class=\"gg-folder\" onclick=\"listFilesButton('" + folder + "/" + String(foundfile.name()) + "')\"></i>&nbsp&nbsp&nbsp&nbsp";
+        returnText += "<i class=\"gg-trash\"  onclick=\"downloadDeleteButton(\'" + folder + "/" + String(foundfile.name()) + "\', \'delete\')\"></i></td></tr>\n\n";
       } else {
         returnText += "Folder: " + String(foundfile.name()) + " Size: " + humanReadableSize(foundfile.size()) + "\n";
       }
@@ -104,9 +104,10 @@ String listFiles(bool ishtml, String folder) {
   while (foundfile) {
     if(!(foundfile.isDirectory())) {
       if (ishtml) {
-        returnText += "<tr align='left'><td>" + String(foundfile.name()) + "</td><td>" + humanReadableSize(foundfile.size()) + "</td>";
-        returnText += "<td><button onclick=\"downloadDeleteButton(\'"+ folder + "/" + String(foundfile.name()) + "\', \'download\')\">Download</button>";
-        returnText += "<td><button onclick=\"downloadDeleteButton(\'"+ folder + "/" + String(foundfile.name()) + "\', \'delete\')\">Delete</button></tr>";
+        returnText += "<tr align='left'><td>" + String(foundfile.name()) + "</td>\n";
+        returnText += "<td style=\"font-size: 10px; text-align=center;\">" + humanReadableSize(foundfile.size()) + "</td>\n";
+        returnText += "<td><i class=\"gg-arrow-down-r\" onclick=\"downloadDeleteButton(\'"+ folder + "/" + String(foundfile.name()) + "\', \'download\')\"></i>&nbsp&nbsp&nbsp&nbsp\n";
+        returnText += "<i class=\"gg-trash\"  onclick=\"downloadDeleteButton(\'" + folder + "/" + String(foundfile.name()) + "\', \'delete\')\"></i></td></tr>\n\n";
       } else {
         returnText += "File: " + String(foundfile.name()) + " Size: " + humanReadableSize(foundfile.size()) + "\n";
       }
@@ -260,7 +261,6 @@ void configureWebServer() {
       logmessage += " Auth: Success";
       Serial.println(logmessage);
       request->send_P(200, "text/html", index_html, processor);
-      //request->redirect("/listfiles");
     } else {
       logmessage += " Auth: Failed";
       Serial.println(logmessage);
@@ -273,7 +273,7 @@ void configureWebServer() {
     String logmessage = "Client:" + request->client()->remoteIP().toString() + " " + request->url();
 
     if (checkUserWebAuth(request)) {
-      request->send(200, "text/html", reboot_html);
+      request->send_P(401, "text/html", reboot_html, processor);
       logmessage += " Auth: Success";
       Serial.println(logmessage);
       shouldReboot = true;
@@ -344,6 +344,10 @@ void configureWebServer() {
               SD.remove(fileName);
               request->send(200, "text/plain", "Deleted File: " + String(fileName));
             }
+            
+          } else if (strcmp(fileAction, "create") == 0) {
+            logmessage += " and checked.";
+            request->send(200, "text/plain", "Created new folder: " + String(fileName));
             
           } else {
             logmessage += " ERROR: invalid action param supplied";
