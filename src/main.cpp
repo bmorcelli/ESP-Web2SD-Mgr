@@ -25,7 +25,7 @@ struct Config {
   const int default_webserverporthttp = 80;
 
   //WiFi as an Access Point
-  const char* apSsidName = "Web2Sd_Mgr";
+  const char* apSsidName = "WiFi2Sd_Mgr";
   IPAddress AP_GATEWAY(172, 0, 0, 1);  // Gateway
 
 Config config;                        // configuration
@@ -127,7 +127,7 @@ String listFiles(bool ishtml, String folder) {
 // parses and processes webpages
 // if the webpage has %SOMETHING% or %SOMETHINGELSE% it will replace those strings with the ones defined
 String processor(const String& var) {
-  if (var == "FIRMWARE") return FIRMWARE_VERSION;
+  if (var == "FIRMWARE") return BUILD_NUMBER;
   else if (var == "FREESD") return humanReadableSize(SD.totalBytes() - SD.usedBytes());
   else if (var == "USEDSD") return humanReadableSize(SD.usedBytes());
   else if (var == "TOTALSD") return humanReadableSize(SD.totalBytes());
@@ -348,7 +348,7 @@ void configureWebServer() {
           } else if (strcmp(fileAction, "create") == 0) {
             logmessage += " and checked.";
             request->send(200, "text/plain", "Created new folder: " + String(fileName));
-            
+
           } else {
             logmessage += " ERROR: invalid action param supplied";
             request->send(400, "text/plain", "ERROR: invalid action param supplied");
@@ -427,7 +427,7 @@ String readLineFromFile(File myFile) {
 
 void setup() {
   Serial.begin(115200);
-  Serial.print("Firmware: "); Serial.println(FIRMWARE_VERSION);
+  Serial.print("Firmware: "); Serial.println(BUILD_NUMBER);
   Serial.println("Booting ...");
 
   #ifdef HAS_SCREEN
