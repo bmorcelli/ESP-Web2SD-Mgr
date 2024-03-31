@@ -2,7 +2,8 @@
 Simple Web server to manage your SD card files.
 
 <p align="left" width="100%">
-    <img width="50%" src="https://github.com/Niximkk/ESP-Web2SD-Mgr/blob/main/imgs/dashboard.png?raw=true"> 
+    <img width="45%" src="https://github.com/Niximkk/ESP-Web2SD-Mgr/blob/main/imgs/dashboard.png?raw=true"> 
+    <img width="45%" src="https://github.com/Niximkk/ESP-Web2SD-Mgr/blob/main/imgs/lightdashboard.png?raw=true"> 
 </p>
 
 ## How to Install
