@@ -155,6 +155,8 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
   if (request->hasParam("folder", true)) {
     uploadFolder = request->getParam("folder", true)->value();
     Serial.printf("FOLDER: %s\n", uploadFolder.c_str());
+    disableCore0WDT(); // disable WDT it as suggested by twitter.com/@lovyan03
+    
     // Aqui você pode usar a variável folder para determinar a pasta onde o arquivo será salvo
   }
 
@@ -181,9 +183,15 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
       logmessage = "Upload Complete: " + String(filename) + ",size: " + String(index + len);
       // close the file handle as the upload is now done
       request->_tempFile.close();
+      //File Check_file = SD.open(uploadFolder + "/" + filename, "r");
+      //if(Check_file.size()!=size) {
+      //  Check_file.close();
+      //  SD.remove(uploadFolder + "/" + filename);
+      //}
       Serial.println(logmessage);
       //request->redirect("/listfiles&folder=" + uploadFolder);
       request->redirect("/");
+      enableCore0WDT();
     }
   } else {
     Serial.println("Auth: Failed");
